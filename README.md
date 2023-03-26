@@ -27,6 +27,8 @@ WINBOND -- Arduino
 
 
 **Don't connect any pin of the chip to 5V instead of 3.3V, this will probably kill the chip.**
+**Use a level shifter to drop arduino's logic 5V to the 3.3V on the WINBOND chip on pins 1,2,5,6.**
+
 
 ## Commands
 
@@ -39,3 +41,10 @@ e - erase all chip (must be done before write)
 w - write content
 
 
+## Python XMODEM BIOS dumper/writer
+
+pip2.7 install -r requirements.txt
+- Edit xmodembiosread.py and xmodembiosread.py according to your needs.
+
+## TODO:
+./xmodembios.py write|read file.rom [serial_port] [baud_rate] 
