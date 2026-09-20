@@ -7,3 +7,11 @@ Debug/
 repo/
 spec/
 *.logicsettings
+.pio/
+.venv/
+__pycache__/
+*.py[cod]
+/output.rom
+/newbios2.bin
+*.rom
+*.part

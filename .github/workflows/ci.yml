@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python 3.14.7 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Check installed dependencies
+        run: python -m pip check
+
+      - name: Compile production Python modules
+        run: >-
+          python -m py_compile
+          xmodembios.py
+          xmodembiosread.py
+          xmodembioswrite.py
+          xmodem_transport.py
+          xmodem_operations.py
+
+      - name: Run Python unit tests
+        run: python -m unittest discover -s tests/python -p "test_*.py" -v
+
+      - name: Smoke-test CLI help
+        run: |
+          python xmodembios.py --help
+          python xmodembios.py read --help
+          python xmodembios.py erase --help
+          python xmodembios.py write --help
+          python xmodembios.py verify --help
+
+  firmware-characterization:
+    name: Firmware characterization (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run native characterization with ASan and UBSan
+        run: bash tests/characterization/run_all.sh
+
+  platformio:
+    name: PlatformIO Arduino Uno
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
+      - name: Install PlatformIO Core 6.2.0
+        run: python -m pip install platformio==6.2.0
+
+      - name: Build Arduino Uno and reject production warnings
+        shell: bash
+        run: |
+          set -o pipefail
+          pio run -e uno 2>&1 | awk '
+            { print }
+            /^src\/.*warning:/ { production_warning = 1 }
+            END {
+              if (production_warning) {
+                print "Production compiler warning detected." > "/dev/stderr"
+                exit 1
+              }
+            }
+          '
