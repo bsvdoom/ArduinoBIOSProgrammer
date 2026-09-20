@@ -1,41 +1,68 @@
+"""Legacy standalone reader backed by the shared Python 3 operations."""
+
+from __future__ import annotations
+
 import sys
+import time
+
 import serial
+from serial import SerialException, SerialTimeoutException
 from xmodem import XMODEM
 
-serial_port = '/dev/ttyUSB0'
-baud_rate = 115200  # In arduino, Serial.begin(baud_rate)
-
-ser = serial.Serial(serial_port, baud_rate)
-
-
-def getc(size, timeout=1):
-    return ser.read(size) or None
-
-
-def putc(data, timeout=1):
-    return ser.write(data)  # note that this ignores the timeout
+from xmodem_operations import (
+    DEFAULT_BAUD_RATE,
+    DEFAULT_SERIAL_PORT,
+    ROM_SIZE_BYTES,
+    OperationError,
+    read_rom,
+)
 
 
-print("Press d for dump ROM else CTRL+C to exit.")
-ch = sys.stdin.read(1)
+SERIAL_PORT = DEFAULT_SERIAL_PORT
+BAUD_RATE = DEFAULT_BAUD_RATE
+OUTPUT_FILENAME = "output.rom"
 
-if ch == '0':
-    ser.write('0')
-print ser.readline().decode()
-print ser.readline().decode()
-print ser.readline().decode()
-print ser.readline().decode()
-print ser.readline().decode()
 
-ch2 = sys.stdin.read(2)
-ser.write('r')
+def main(
+    *,
+    serial_factory=serial.Serial,
+    modem_factory=XMODEM,
+    input_stream=None,
+    output_stream=None,
+    error_stream=None,
+    output_path=OUTPUT_FILENAME,
+    expected_size=ROM_SIZE_BYTES,
+    sleeper=time.sleep,
+    monotonic=time.monotonic,
+) -> int:
+    del input_stream  # Kept as an injected compatibility argument; no manual wait remains.
+    output_stream = sys.stdout if output_stream is None else output_stream
+    error_stream = sys.stderr if error_stream is None else error_stream
 
-ch3 = sys.stdin.read(2)
+    try:
+        info = read_rom(
+            output_path,
+            SERIAL_PORT,
+            BAUD_RATE,
+            expected_size=expected_size,
+            serial_factory=serial_factory,
+            modem_factory=modem_factory,
+            sleeper=sleeper,
+            monotonic=monotonic,
+            status_callback=lambda line: print(line, file=output_stream),
+        )
+        print(
+            f"Read complete: {info.size} bytes, SHA-256 {info.sha256}",
+            file=output_stream,
+        )
+        return 0
+    except KeyboardInterrupt:
+        print("Error: read interrupted.", file=error_stream)
+        return 130
+    except (OperationError, SerialTimeoutException, SerialException, OSError) as error:
+        print(f"Error: {error}", file=error_stream)
+        return 1
 
-print ser.readline().decode()
-print ser.readline().decode()
 
-modem = XMODEM(getc, putc)
-
-stream = open('output.rom', 'wb')
-modem.recv(stream)
+if __name__ == "__main__":
+    raise SystemExit(main())
