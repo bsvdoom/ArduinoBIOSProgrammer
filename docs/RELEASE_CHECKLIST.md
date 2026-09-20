@@ -4,25 +4,25 @@ This checklist prepares a release; it does not authorize hardware operations, co
 
 ## Repository and artifacts
 
-- [ ] Review `git status --short` and every tracked/untracked change.
-- [ ] Confirm only intended project files are included.
-- [ ] Confirm `output.rom`, `newbios2.bin`, other `*.rom` readbacks, and `*.part` files are ignored and absent from the index.
-- [ ] Confirm `.venv/`, `.pio/`, `__pycache__/`, and test-generated temporary files are absent from the index.
-- [ ] Check tracked and intended untracked file sizes; investigate every unexpected binary or large file.
-- [ ] Confirm no hardware readback, target BIOS image, secret, token, private key, or machine-specific path is included.
+- [x] Review `git status --short` and every tracked/untracked change.
+- [x] Confirm only intended project files are included.
+- [x] Confirm `output.rom`, `newbios2.bin`, other `*.rom` readbacks, and `*.part` files are ignored and absent from the index.
+- [x] Confirm `.venv/`, `.pio/`, `__pycache__/`, and test-generated temporary files are absent from the index.
+- [x] Check tracked and intended untracked file sizes; investigate every unexpected binary or large file.
+- [x] Confirm no hardware readback, target BIOS image, secret, token, private key, or machine-specific path is included.
 
 ## Automated verification
 
 - [ ] Python 3.14.7 dependency installation succeeds from `requirements.txt`.
-- [ ] `python -m pip check` passes.
-- [ ] Production Python modules pass `py_compile` or `compileall`.
+- [x] `python -m pip check` passes.
+- [x] Production Python modules pass `py_compile` or `compileall`.
 - [ ] All Python unit tests pass on Ubuntu and Windows.
-- [ ] Main CLI and all four subcommand help smoke tests pass.
-- [ ] All 71 firmware characterization tests pass with zero missing safeguards and zero unexpected failures.
-- [ ] ASan and UBSan report no error.
-- [ ] AVR syntax check passes without production warnings.
-- [ ] `pio run -e uno -t clean` and `pio run -e uno` pass.
-- [ ] PlatformIO uses Core 6.2.0 and Atmel AVR platform 5.3.0.
+- [x] Main CLI and all four subcommand help smoke tests pass.
+- [x] All 71 firmware characterization tests pass with zero missing safeguards and zero unexpected failures.
+- [x] ASan and UBSan report no error.
+- [x] AVR syntax check passes without production warnings.
+- [x] `pio run -e uno -t clean` and `pio run -e uno` pass.
+- [x] PlatformIO uses Core 6.2.0 and Atmel AVR platform 5.3.0.
 - [ ] GitHub Actions jobs are green for the exact candidate commit.
 
 ## Documentation and hardware status
@@ -40,10 +40,10 @@ This checklist prepares a release; it does not authorize hardware operations, co
 - [ ] Choose and document the release version.
 - [ ] Update version-bearing project metadata consistently.
 - [ ] Replace the Unreleased heading with the chosen version/date only when the release decision is final.
-- [ ] Review the complete candidate diff.
-- [ ] Create the release commit.
+- [x] Review the complete candidate diff.
+- [x] Create the release-candidate commits.
 - [ ] Create the annotated Git tag.
 - [ ] Push the commit and tag.
 - [ ] Create the GitHub release with changelog, limitations, build/test status, hardware status, and license/provenance caveat.
 
-The commit, tag, push, and GitHub release items intentionally remain unchecked in 12A/12.
+Five scoped release-candidate commits were created locally on `modernization/release-candidate` in 12C1/12. The HTTPS push was attempted but could not authenticate in the current environment, and `gh` is not installed. Push, remote GitHub Actions, hardware validation, tag, and GitHub release therefore remain unchecked.
