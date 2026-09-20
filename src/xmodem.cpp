@@ -111,7 +111,7 @@ start:
 	octet_send(255 - octet);
 
 	for (i = 0; i < XMODEM_BLOCK_SIZE; i++) {
-		uint8_t octet = *dst++;
+		uint8_t octet = dst[i];
 		octet_send(octet);
 		crc_update(octet);
 		if (octet_available()) {
@@ -139,7 +139,7 @@ start:
 	return NEXT;
 }
 
-enum XModem::block_result XModem::block_receive(uint8_t *dst)
+enum XModem::block_result XModem::block_receive(uint8_t *dst, bool accept_eot)
 {
 	int last = retries;
 	uint8_t i, octet, receive;
@@ -162,8 +162,8 @@ start:
 
 	// if done
 	if (EOT == octet) {
-		octet_send(ACK);
-		return END;
+		octet_send(accept_eot ? ACK : CAN);
+		return accept_eot ? END : ERROR;
 	}
 
 	// if cancelled

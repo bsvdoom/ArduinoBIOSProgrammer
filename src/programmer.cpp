@@ -1,5 +1,5 @@
 #include "programmer.h"
-#include "XModem.h"
+#include "xmodem.h"
 
 #if defined(__INTELLISENSE__) && defined(F)
 #undef F
@@ -63,13 +63,12 @@ void Programmer::task(void)
 		case 'e':
 			{
 				message(F("Erase all\r\n"));
-				flash.setWriteEnable(1);
-				flash.eraseAll();
-				do {
-					fputc('.', console);
-					delay(100);
-				} while (flash.busy());
-				message(F("\r\nDone\r\n"));
+				if (flash.eraseAll()) {
+					message(F("Done\r\n"));
+				}
+				else {
+					message(F("Erase failed\r\n"));
+				}
 			}
 			break;
 		case 'W':
@@ -79,30 +78,46 @@ void Programmer::task(void)
 				XModem * xmodem = new XModem(Serial);
 
 				enum XModem::block_result result = XModem::NEXT;
-				for (uint32_t address = 0; (address < size) && (result == XModem::NEXT); address += FLASH_PAGE_SIZE) {
+				uint32_t received = 0;
+				bool flash_failed = false;
+				for (uint32_t address = 0; (address < size) && (result == XModem::NEXT) && !flash_failed; address += FLASH_PAGE_SIZE) {
 					uint8_t * ptr = page;
 					uint8_t count = 2; // FLASH_PAGE_SIZE / XMODEM_BLOCK_SIZE;
 					while (count && (result == XModem::NEXT)) {
-						result = xmodem->block_receive(ptr);
-						ptr += XMODEM_BLOCK_SIZE;
-						count--;
+						result = xmodem->block_receive(ptr, false);
+						if (result == XModem::NEXT) {
+							ptr += XMODEM_BLOCK_SIZE;
+							received += XMODEM_BLOCK_SIZE;
+							count--;
+						}
 					}
-					if (result == XModem::NEXT || result == XModem::END) {
-						flash.setWriteEnable(1);
-						flash.writePage(address, page);
-						while (flash.busy());
+					if (!count && result == XModem::NEXT) {
+						flash_failed = !flash.writePage(address, page);
+					}
+				}
+
+				if (!flash_failed && received == size && result == XModem::NEXT) {
+					result = xmodem->block_receive(page);
+					if (result == XModem::NEXT) {
+						Serial.write(XModem::CAN);
 					}
 				}
 
 				delay(1000);
 
-				switch (result)
+				if (flash_failed) {
+					message(F("\r\nFlash write failed\r\n"));
+				}
+				else switch (result)
 				{
 				case XModem::END:
 					message(F("\r\nWrite done\r\n"));
 					break;
 				case XModem::NEXT:
 					message(F("Out of memory\r\n"));
+					break;
+				case XModem::ERROR:
+					message(F("Invalid file size\r\n"));
 					break;
 				case XModem::TIMEOUT:
 					message(F("Timeout\r\n"));
@@ -136,14 +151,22 @@ void Programmer::task(void)
 				}
 				else {
 					result = XModem::NEXT;
-					for (uint32_t address = 0; (address < size) && (result == XModem::NEXT); address += XMODEM_BLOCK_SIZE) {
-						flash.read(address, page, XMODEM_BLOCK_SIZE);
-						result = xmodem->block_send(page);
+					bool flash_failed = false;
+					for (uint32_t address = 0; (address < size) && (result == XModem::NEXT) && !flash_failed; address += XMODEM_BLOCK_SIZE) {
+						if (flash.read(address, page, XMODEM_BLOCK_SIZE)) {
+							result = xmodem->block_send(page);
+						}
+						else {
+							flash_failed = true;
+						}
 					}
 
 					delay(1000);
 
-					switch (result)
+					if (flash_failed) {
+						message(F("Flash read failed\r\n"));
+					}
+					else switch (result)
 					{
 					case XModem::NEXT:
 						xmodem->finish_send();

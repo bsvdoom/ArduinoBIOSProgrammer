@@ -63,7 +63,7 @@ public:
 	enum block_result start_send(void);
 	enum block_result finish_send(void);
 	enum block_result block_send(uint8_t *dst);
-	enum block_result block_receive(uint8_t *dst);
+	enum block_result block_receive(uint8_t *dst, bool accept_eot = true);
 };
 
 

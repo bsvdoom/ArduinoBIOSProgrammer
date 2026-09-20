@@ -42,13 +42,11 @@ latest version available on http://code.google.com/p/winbondflash
 
 #define WINBOND_MANUF	0xef
 
-#define DEFAULT_TIMEOUT 200
-
 typedef struct {
 	winbondFlashClass::partNumberType pn;
 	uint16_t id;
 	uint32_t bytes;
-	uint16_t pages;
+	uint32_t pages;
 	uint16_t sectors;
 	uint16_t blocks;
 }partDescriptionType;
@@ -157,7 +155,7 @@ bool winbondFlashClass::checkPartNo(partNumberType _partno)
 		#ifdef DEBUG
 		Serial.print("Autodetect...");
 		#endif
-		for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+		for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 		{
 			if(id == pgm_read_word(&(partDescription[i].id)))
 			{
@@ -180,7 +178,7 @@ bool winbondFlashClass::checkPartNo(partNumberType _partno)
 	}
 
 	//test chip id and partNo
-	for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+	for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 	{
 		if(_partno == (partNumberType)pgm_read_byte(&(partDescription[i].pn)))
 		{
@@ -208,16 +206,36 @@ bool winbondFlashClass::busy()
 	return false;
 }
 
-void winbondFlashClass::setWriteEnable(bool cmd)
+bool winbondFlashClass::setWriteEnable(bool cmd)
 {
+	uint8_t r1;
 	select();
 	transfer( cmd ? W_EN : W_DE );
 	deselect();
+	if(!cmd)
+		return true;
+
+	select();
+	transfer(R_SR1);
+	r1 = transfer(0xff);
+	deselect();
+	return (r1 & SR1_WEN_MASK) != 0;
+}
+
+bool winbondFlashClass::waitUntilReady(uint32_t timeout_ms)
+{
+	uint32_t start = millis();
+	while(busy())
+	{
+		if((uint32_t)(millis() - start) >= timeout_ms)
+			return false;
+	}
+	return true;
 }
 
 long winbondFlashClass::bytes()
 {
-	for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+	for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 	{
 		if(partno == (partNumberType)pgm_read_byte(&(partDescription[i].pn)))
 		{
@@ -227,13 +245,26 @@ long winbondFlashClass::bytes()
 	return 0;
 }
 
-uint16_t winbondFlashClass::pages()
+bool winbondFlashClass::validRange(uint32_t addr,uint32_t length)
 {
-	for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+	uint32_t capacity = (uint32_t)bytes();
+	if(addr > capacity)
+		return false;
+	return length <= capacity - addr;
+}
+
+bool winbondFlashClass::validAlignedRange(uint32_t addr,uint32_t length)
+{
+	return (addr % length) == 0 && validRange(addr,length);
+}
+
+uint32_t winbondFlashClass::pages()
+{
+	for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 	{
 		if(partno == (partNumberType)pgm_read_byte(&(partDescription[i].pn)))
 		{
-			return pgm_read_word(&(partDescription[i].pages));
+			return pgm_read_dword(&(partDescription[i].pages));
 		}
 	}
 	return 0;
@@ -241,7 +272,7 @@ uint16_t winbondFlashClass::pages()
 
 uint16_t winbondFlashClass::sectors()
 {
-	for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+	for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 	{
 		if(partno == (partNumberType)pgm_read_byte(&(partDescription[i].pn)))
 		{
@@ -253,7 +284,7 @@ uint16_t winbondFlashClass::sectors()
 
 uint16_t winbondFlashClass::blocks()
 {
-	for(int i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
+	for(size_t i=0;i<sizeof(partDescription)/sizeof(partDescription[0]);i++)
 	{
 		if(partno == (partNumberType)pgm_read_byte(&(partDescription[i].pn)))
 		{
@@ -287,10 +318,14 @@ void winbondFlashClass::end()
 	delayMicroseconds(5);//>3us
 }
 
-uint16_t winbondFlashClass::read (uint32_t addr,uint8_t *buf,uint16_t n)
+bool winbondFlashClass::read (uint32_t addr,uint8_t *buf,uint16_t n)
 {
+	if(!validRange(addr,n))
+		return false;
+	if(n == 0)
+		return true;
 	if(busy())
-		return 0;
+		return false;
 
 	select();
 	transfer(READ);
@@ -301,11 +336,15 @@ uint16_t winbondFlashClass::read (uint32_t addr,uint8_t *buf,uint16_t n)
 	}
 	deselect();
 
-	return n;
+	return true;
 }
 
-void winbondFlashClass::writePage(uint32_t addr_start,uint8_t *buf)
+bool winbondFlashClass::writePage(uint32_t addr_start,uint8_t *buf)
 {
+	if(!validAlignedRange(addr_start,FLASH_PAGE_SIZE))
+		return false;
+	if(!setWriteEnable())
+		return false;
 	select();
 	transfer(PAGE_PGM);
 	transfer(addr_start>>16);
@@ -317,37 +356,56 @@ void winbondFlashClass::writePage(uint32_t addr_start,uint8_t *buf)
 		i++;
 	} while(i!=0);
 	deselect();
+	return waitUntilReady(FLASH_PAGE_PROGRAM_TIMEOUT_MS);
 }
 
-void winbondFlashClass::eraseSector(uint32_t addr_start)
+bool winbondFlashClass::eraseSector(uint32_t addr_start)
 {
+	if(!validAlignedRange(addr_start,FLASH_SECTOR_SIZE))
+		return false;
+	if(!setWriteEnable())
+		return false;
 	select();
 	transfer(SECTOR_E);
 	transfer_addr(addr_start);
 	deselect();
+	return waitUntilReady(FLASH_SECTOR_ERASE_TIMEOUT_MS);
 }
 
-void winbondFlashClass::erase32kBlock(uint32_t addr_start)
+bool winbondFlashClass::erase32kBlock(uint32_t addr_start)
 {
+	if(!validAlignedRange(addr_start,FLASH_BLOCK32_SIZE))
+		return false;
+	if(!setWriteEnable())
+		return false;
 	select();
 	transfer(BLK_E_32K);
 	transfer_addr(addr_start);
 	deselect();
+	return waitUntilReady(FLASH_BLOCK32_ERASE_TIMEOUT_MS);
 }
 
-void winbondFlashClass::erase64kBlock(uint32_t addr_start)
+bool winbondFlashClass::erase64kBlock(uint32_t addr_start)
 {
+	if(!validAlignedRange(addr_start,FLASH_BLOCK64_SIZE))
+		return false;
+	if(!setWriteEnable())
+		return false;
 	select();
 	transfer(BLK_E_64K);
 	transfer_addr(addr_start);
 	deselect();
+	return waitUntilReady(FLASH_BLOCK64_ERASE_TIMEOUT_MS);
 }
 
-void winbondFlashClass::eraseAll()
+bool winbondFlashClass::eraseAll()
 {
+	if(!setWriteEnable())
+		return false;
 	select();
 	transfer(CHIP_ERASE);
 	deselect();
+	return waitUntilReady(FLASH_CHIP_ERASE_TIMEOUT_MS);
 }
 
 void winbondFlashClass::eraseSuspend()
@@ -374,6 +432,7 @@ bool winbondFlashSPI::begin(partNumberType _partno, SPIClass &_spi, uint8_t _nss
 	spi.setBitOrder(MSBFIRST);
 	spi.setClockDivider(SPI_CLOCK_DIV2);
 	spi.setDataMode(SPI_MODE0);
+	pinMode(nss,OUTPUT);
 	deselect();
 	#ifdef DEBUG
 	Serial.println(F("SPI OK"));
@@ -387,6 +446,3 @@ void winbondFlashSPI::end()
 	winbondFlashClass::end();
 	spi.end();
 }
-
-
-
