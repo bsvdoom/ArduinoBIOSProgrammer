@@ -1,0 +1,394 @@
+HARDWARE VALIDATION SESSION PROMPT
+STEP 12B/12 — REAL W25Q128 HARDWARE VALIDATION
+Recommended Codex model: Sol
+Reasoning level: High
+Start this task in a new Codex conversation.
+CONTEXT
+Project:
+https://github.com/bsvdoom/ArduinoBIOSProgrammer
+Release-candidate branch:
+modernization/release-candidate
+The software implementation, native characterization tests, Python tests, PlatformIO Arduino Uno build, and GitHub Actions CI were completed before this session.
+The purpose of this session is to validate the release candidate using a real Arduino Uno, a separate expendable Winbond W25Q128-series test chip, proper 5 V to 3.3 V level shifting, the existing PlatformIO firmware, and the existing Python CLI.
+Required validation sequence:
+identify → build → upload → initialize → read twice → erase → blank verify → write → verify → power-cycle verify
+Do not use a motherboard or an in-circuit BIOS chip for this test.
+AUTHORITATIVE REFERENCES
+Use the exact datasheet matching the complete marking on the physical chip.
+Project repository:
+https://github.com/bsvdoom/ArduinoBIOSProgrammer
+Winbond W25Q128FV product page:
+https://www.winbond.com/hq/new-online-purchasing-guide/index.html?__locale=en&pLine=%2Fproduct%2Fcode-storage-flash%2Fqspi-nor%2F&pNo=W25Q128FV
+W25Q128FV datasheet:
+https://www.mouser.lt/datasheet/2/949/w25q128fv_rev.m_05132016_kms-1489795.pdf
+Arduino Uno Rev3 documentation:
+https://docs.arduino.cc/hardware/uno-rev3
+PlatformIO Arduino Uno documentation:
+https://docs.platformio.org/en/latest/boards/atmelavr/uno.html
+PlatformIO upload documentation:
+https://docs.platformio.org/en/latest/core/userguide/cmd_run.html
+The W25Q128FV reference part is a 128-Mbit, 3 V serial NOR flash with 256-byte programmable pages. The exact physical part may differ, so its complete marking and matching datasheet take precedence.
+MANDATORY SAFETY RULES
+Use only a separate, expendable test chip.
+Do not connect this setup to a motherboard.
+Assume that all existing data on the test chip may be destroyed.
+Never apply 5 V to a flash pin rated for the 3 V supply range.
+Use appropriate level shifting between the 5 V Arduino Uno signals and the flash.
+Use a common ground.
+Place a 100 nF ceramic decoupling capacitor close to the flash VCC and GND pins.
+Change wiring only while all power sources and USB are disconnected.
+Do not guess the pinout from the package orientation.
+Do not assume that a chip advertised as “W25Q128” is a particular W25Q128 variant.
+Stop if the marking, package, pinout, voltage, capacity, or JEDEC identity is uncertain.
+Never run erase or write automatically.
+Require a separate explicit user confirmation immediately before erase.
+Require another separate explicit user confirmation immediately before write.
+Do not interpret an earlier confirmation as authorization for a later destructive operation.
+Do not automatically retry a failed erase or write.
+Do not modify production code during this validation.
+If a software defect is found, preserve the evidence and stop. Fix it in a separate development session so the validation baseline remains unchanged.
+Do not push, merge, tag, publish a release, or alter repository visibility.
+PHASE 0 — REPOSITORY BASELINE
+Inspect:
+git branch --show-current
+git status --short --ignored
+git log -1 --oneline
+git branch -vv
+Require:
+The current branch is modernization/release-candidate.
+The expected release-candidate HEAD is present.
+There are no unexplained tracked or untracked changes.
+Only known local build environments, caches, ROM files, and test artifacts may be ignored.
+The latest relevant GitHub Actions workflow is successful.
+If the repository differs from the expected release candidate, stop and report the discrepancy.
+Do not reset, clean, delete, amend, rebase, or otherwise rewrite user data.
+PHASE 1 — IDENTIFY THE PHYSICAL HARDWARE
+Before connecting USB or power, ask the user for:
+1. The complete physical marking printed on the flash.
+2. The package type.
+3. A clear photograph of the package and its orientation.
+4. The exact level-shifter type or clear photographs of both sides of the module.
+5. The proposed pin-to-pin wiring.
+6. Confirmation that the flash is not connected to a motherboard.
+7. Confirmation that the chip is expendable.
+8. Confirmation that no irreplaceable data exists only on this chip.
+Locate the datasheet for the exact physical part.
+Verify from that datasheet:
+Supply-voltage range.
+Package pinout.
+Capacity.
+JEDEC manufacturer and device identification.
+Page Program size.
+Supported erase sizes.
+Status-register meanings.
+Typical and maximum program and erase times.
+WP# behavior.
+HOLD# or RESET# behavior.
+The current production CLI accepts exactly 16,777,216-byte images. Do not continue with destructive testing if the detected capacity is not exactly 16,777,216 bytes.
+Do not infer compatibility solely from a similar product name.
+PHASE 2 — PHYSICAL PRE-POWER CHECKLIST
+Ask the user to confirm every item separately:
+Arduino USB and all other power sources are disconnected.
+The flash is outside the motherboard.
+The package orientation and pin 1 were identified from the exact datasheet.
+VCC and GND are not reversed.
+CS#, DO/MISO, WP#, GND, DI/MOSI, CLK, HOLD#/RESET#, and VCC match the exact datasheet.
+WP# is held at the required defined level.
+HOLD#/RESET# is held at the required defined level.
+Arduino and flash have a common ground.
+A 100 nF ceramic capacitor is fitted close to flash VCC and GND.
+All Arduino-to-flash output signals pass through suitable level shifting.
+There is no short circuit between flash VCC and GND.
+The expected voltage at every flash pin is within the datasheet limits.
+The user accepts that the test chip may be erased or damaged.
+Do not apply power until every item is confirmed.
+Codex cannot physically verify wiring or voltage. Treat the user’s physical inspection and measurements as required external evidence.
+PHASE 3 — NON-HARDWARE REGRESSION BASELINE
+Before uploading firmware, run the project’s existing checks:
+Python unit tests.
+py_compile.
+pip check.
+Native firmware characterization tests.
+ASan and UBSan checks.
+AVR syntax and warning checks.
+PlatformIO clean Arduino Uno build.
+Record:
+Git HEAD.
+Python version.
+PlatformIO version.
+Toolchain version.
+Test totals.
+Sanitizer results.
+Firmware flash usage.
+Firmware RAM usage.
+Compiler warnings.
+If any existing regression check fails, stop before hardware upload.
+Do not fix a failure in this validation session.
+PHASE 4 — FIRMWARE UPLOAD
+Connect only the Arduino Uno first and identify its serial port.
+Do not guess the port. Compare the available ports before and after connecting the Uno.
+Create a clean PlatformIO build:
+pio run -e uno -t clean
+pio run -e uno
+Before upload, show the user:
+Selected port.
+Exact upload command.
+Environment name.
+Firmware size.
+Current Git HEAD.
+Ask for confirmation before uploading.
+After confirmation, upload using the existing PlatformIO project.
+Do not start erase or write after upload.
+Record the complete upload result.
+PHASE 5 — NON-DESTRUCTIVE INITIALIZATION
+Connect and power the level-shifted flash setup only after the physical checklist and firmware upload have passed.
+Initialize the programmer without erasing or writing.
+Record:
+Serial port.
+Baud rate.
+Complete initialization output.
+CHIP READY result.
+Reported flash size.
+Any available device identification.
+All errors and timeouts.
+Expected supported capacity:
+16,777,216 bytes
+Stop and disconnect power if initialization fails, the reported capacity differs, the physical marking and detected device do not agree, the firmware reports an unsupported device, communication is unstable, or voltage or temperature appears abnormal.
+Do not proceed to erase or write after any such failure.
+PHASE 6 — TWO INDEPENDENT INITIAL READS
+Create the validation workspace outside the Git repository.
+Do not store validation binaries in a tracked project directory.
+Perform two independent complete reads:
+original-read-1.bin
+original-read-2.bin
+For each read, record:
+Command.
+Start time.
+Finish time.
+Exit code.
+Complete program output.
+Resulting file size.
+SHA-256 hash.
+Require:
+Both files are exactly 16,777,216 bytes.
+Both SHA-256 hashes are identical.
+Byte-for-byte comparison succeeds.
+There is no odd/even byte-pair swap.
+Page and erase-block boundaries match.
+Neither file is truncated or padded.
+Also count:
+Total 0xFF bytes.
+Total non-0xFF bytes.
+Do not assume that a new chip is blank.
+If the two independent reads differ by even one byte, stop. Do not erase.
+Preserve both files and logs outside Git.
+PHASE 7 — DETERMINISTIC VALIDATION IMAGE
+Create a deterministic test image outside the repository.
+Requirements:
+Exact size: 16,777,216 bytes.
+It must not be a BIOS image.
+It must be reproducible from a documented algorithm and fixed seed.
+It must contain all possible byte values.
+It must vary across 256-byte pages.
+It must detect byte-pair swaps.
+It must detect page swaps.
+It must detect erase-block swaps.
+It must detect shifts, truncation, padding, and stuck 0x00 or 0xFF regions.
+A suitable approach is to generate the stream from consecutive SHA-256 blocks using a fixed ASCII domain string, an incrementing 64-bit counter, and deterministic concatenation until the exact capacity is reached.
+Record:
+Generation algorithm.
+Fixed domain string.
+Exact file size.
+SHA-256 hash of the completed image.
+Do not add the image or generation output to Git.
+PHASE 8 — ERASE AUTHORIZATION GATE
+Before erasing, display:
+Exact chip marking.
+Detected capacity.
+Selected port.
+Erase command.
+Hashes of the two matching original reads.
+Paths where the original reads are stored.
+A warning that erase destroys the current chip contents.
+Then stop and require the user to enter exactly:
+ERASE AUTHORIZED ON THE EXPENDABLE TEST CHIP
+Anything else means no authorization.
+Only after exact confirmation may the erase command be executed.
+Record:
+Start time.
+Finish time.
+Duration.
+Exit code.
+Complete stdout and stderr.
+Firmware result.
+Do not retry automatically if erase fails.
+PHASE 9 — BLANK VERIFICATION
+Create an external 16,777,216-byte reference file containing only 0xFF.
+Run the existing explicit CLI verify command against that reference.
+Require:
+Exit code 0.
+Readback size exactly 16,777,216 bytes.
+Every readback byte equals 0xFF.
+No mismatch offset exists.
+If blank verification fails:
+Do not write.
+Do not erase again automatically.
+Save the output and readback evidence.
+Disconnect power.
+Stop the validation.
+PHASE 10 — WRITE AUTHORIZATION GATE
+Before writing, display:
+Exact write command.
+Selected port.
+Validation-image path.
+Validation-image size.
+Validation-image SHA-256.
+Confirmation that blank verification passed.
+A warning that this modifies the chip.
+Then stop and require the user to enter exactly:
+WRITE AUTHORIZED ON THE EXPENDABLE TEST CHIP
+Anything else means no authorization.
+Only after exact confirmation may the write command be executed.
+The write operation must not perform an implicit erase or automatic verify.
+Record:
+Start time.
+Finish time.
+Duration.
+Exit code.
+Complete stdout and stderr.
+Firmware result.
+Do not retry automatically after failure.
+PHASE 11 — INDEPENDENT VERIFICATION
+After a successful write, run the existing explicit CLI verify operation as a separate command.
+Require:
+Exit code 0.
+Readback size exactly 16,777,216 bytes.
+Expected and actual SHA-256 hashes match.
+Byte-for-byte comparison succeeds.
+No first mismatch exists.
+No byte-pair swap exists.
+All checked page and erase-block boundaries match.
+On mismatch:
+Do not rewrite.
+Do not erase.
+Preserve the validation image.
+Preserve the complete readback.
+Preserve all logs.
+Record the first mismatch offset.
+Record expected and actual bytes around that offset.
+Check whether mismatches correlate with page or erase-block boundaries.
+Stop the validation.
+PHASE 12 — POWER-CYCLE VERIFICATION
+After the first successful verification:
+1. Close all serial-port users.
+2. Disconnect Arduino USB.
+3. Disconnect all flash power.
+4. Confirm that the circuit is unpowered.
+5. Reconnect the unchanged circuit.
+6. Initialize the programmer again.
+7. Run the same explicit CLI verify operation again.
+Require the second verification to produce the same successful result and matching SHA-256 hash.
+Do not automatically erase or rewrite after power cycling.
+PHASE 13 — DOCUMENTATION
+Mark hardware validation as successful only if all mandatory checks pass:
+Exact chip identified.
+Physical setup documented.
+Software regression baseline passed.
+Firmware upload passed.
+Initialization passed.
+Two initial reads were identical.
+Erase passed.
+Blank verification passed.
+Write passed.
+First verification passed.
+Power-cycle verification passed.
+No byte-pair swap was detected.
+No size, page-boundary, or erase-block-boundary defect was detected.
+If validation succeeds, modifications are limited to:
+docs/HARDWARE_VALIDATION.md
+docs/RELEASE_CHECKLIST.md
+docs/development/RELEASE_PREPARATION.md
+README.md, only if it accurately identifies the tested hardware
+CHANGELOG.md, only if appropriate
+Document:
+Complete Arduino model.
+Complete flash marking.
+Flash package.
+Exact matching datasheet.
+Level-shifter type.
+Power arrangement.
+Decoupling.
+Wiring.
+Host operating system.
+Python version.
+PlatformIO and toolchain versions.
+Git commit tested.
+Operation durations.
+Validation-image SHA-256.
+Initial-read SHA-256.
+Blank-verification result.
+Write result.
+Both verification results.
+Limitations and untested configurations.
+Do not commit:
+ROM or BIN files.
+Original flash contents.
+Readback files.
+Generated validation images.
+Serial-device identifiers.
+Logs containing machine-specific paths.
+.pio directory.
+.venv directory.
+Caches.
+Credentials or tokens.
+Do not claim support for any hardware variant that was not physically tested.
+PHASE 14 — FINAL REGRESSION AND LOCAL COMMIT
+After documentation changes, rerun:
+Python tests.
+Python compilation checks.
+pip check.
+Firmware characterization tests.
+Sanitizer checks.
+AVR checks.
+PlatformIO clean Uno build.
+Then verify:
+git diff --check
+git diff --cached --check
+git status --short --ignored
+Check all modified local documentation links.
+Ensure that no binary, ROM, readback, log, cache, build product, environment, credential, or unrelated file is staged.
+If every hardware and software check passed, create one local documentation commit:
+docs: record W25Q128 hardware validation
+Do not push.
+Do not merge.
+Do not create a tag.
+Do not create a GitHub release.
+REQUIRED FINAL REPORT
+The final report must contain:
+Overall PASS or FAIL.
+Exact Arduino model.
+Exact flash marking and package.
+Exact datasheet used.
+Level-shifting hardware.
+Tested Git commit.
+Initialization result.
+Two-read comparison result.
+Erase result.
+Blank-verification result.
+Write result.
+First verification result.
+Power-cycle verification result.
+All relevant SHA-256 hashes.
+File sizes.
+Operation durations.
+Regression-test totals.
+Sanitizer result.
+PlatformIO memory usage.
+Modified documentation files.
+Local commit hash, if validation passed.
+Final working-tree state.
+Push: NOT RUN.
+Merge: NOT RUN.
+Tag: NOT RUN.
+Release: NOT RUN.
+If any mandatory hardware check fails or remains uncertain, do not create a successful validation commit.
