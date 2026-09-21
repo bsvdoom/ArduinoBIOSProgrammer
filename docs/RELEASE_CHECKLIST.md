@@ -13,17 +13,17 @@ This checklist prepares a release; it does not authorize hardware operations, co
 
 ## Automated verification
 
-- [ ] Python 3.14.7 dependency installation succeeds from `requirements.txt`.
+- [x] Python 3.14.7 dependency installation succeeds from `requirements.txt`.
 - [x] `python -m pip check` passes.
 - [x] Production Python modules pass `py_compile` or `compileall`.
-- [ ] All Python unit tests pass on Ubuntu and Windows.
+- [x] All Python unit tests pass on Ubuntu and Windows.
 - [x] Main CLI and all four subcommand help smoke tests pass.
 - [x] All 71 firmware characterization tests pass with zero missing safeguards and zero unexpected failures.
 - [x] ASan and UBSan report no error.
 - [x] AVR syntax check passes without production warnings.
 - [x] `pio run -e uno -t clean` and `pio run -e uno` pass.
 - [x] PlatformIO uses Core 6.2.0 and Atmel AVR platform 5.3.0.
-- [ ] GitHub Actions jobs are green for the exact candidate commit.
+- [x] GitHub Actions jobs are green for candidate commit `d7a3b6c` ([run 35598136126](https://github.com/bsvdoom/ArduinoBIOSProgrammer/actions/runs/35598136126)).
 
 ## Documentation and hardware status
 
@@ -42,8 +42,11 @@ This checklist prepares a release; it does not authorize hardware operations, co
 - [ ] Replace the Unreleased heading with the chosen version/date only when the release decision is final.
 - [x] Review the complete candidate diff.
 - [x] Create the release-candidate commits.
+- [x] Push `modernization/release-candidate` through commit `d7a3b6c`.
 - [ ] Create the annotated Git tag.
-- [ ] Push the commit and tag.
+- [ ] Push the release tag.
 - [ ] Create the GitHub release with changelog, limitations, build/test status, hardware status, and license/provenance caveat.
 
-Five scoped release-candidate commits were created locally on `modernization/release-candidate` in 12C1/12. The HTTPS push was attempted but could not authenticate in the current environment, and `gh` is not installed. Push, remote GitHub Actions, hardware validation, tag, and GitHub release therefore remain unchecked.
+The `modernization/release-candidate` branch was manually pushed through `d7a3b6c`. The public GitHub Actions API verifies that its CI run completed successfully and all four jobs are green: firmware characterization on Ubuntu, Python 3.14.7 on Ubuntu and Windows, and the PlatformIO Arduino Uno build. See the [branch-filtered Actions page](https://github.com/bsvdoom/ArduinoBIOSProgrammer/actions?query=branch%3Amodernization%2Frelease-candidate).
+
+Hardware validation remains **NOT RUN**. No Arduino upload, physical flash read/erase/write/verify, merge, pull request, tag, or GitHub release has been performed. Real Arduino Uno and flash-hardware validation is still required before a stable release.

@@ -68,12 +68,12 @@ The requested sensitive-data scan found only intentional CLI example/default por
 - Structure: local workflow YAML parsing, trigger/job/matrix assertions, and five repository-local Markdown links passed; 0 broken local links were found.
 - Repository hygiene: ignore, index, intended-file size, sensitive-data, and Git diff checks passed. The exact final worktree inventory is reported in the 12A handoff.
 
-These checks must be repeated by the release checklist for the eventual candidate commit. They do not substitute for a remote GitHub Actions run or a physical hardware test.
+These checks were subsequently repeated by GitHub Actions for candidate commit `d7a3b6c`. Neither the local nor remote checks substitute for a physical hardware test.
 
 ## Remaining steps
 
 - **12B:** perform and record the manual hardware validation only after the user accepts the electrical and destructive-operation risks. It has not been started here.
-- **12C:** review the final candidate, run remote CI, resolve the license/provenance decision, choose a version, and only then tag and create a release.
+- **12C:** resolve the license/provenance decision, complete real hardware validation, choose a version, and only then tag and create a stable release.
 
 ## 12C1 execution update
 
@@ -89,4 +89,15 @@ Five scoped commits were created after the complete local baseline passed:
 
 The committed state passed the same 56 Python tests, five CLI help checks, 71 firmware characterization tests, ASan/UBSan run, warning-free AVR syntax check, and PlatformIO clean Uno rebuild. The worktree was clean apart from ignored `.pio/`, `.venv/`, Python caches, `output.rom`, and `newbios2.bin`; none of those files is tracked.
 
-The normal, non-force HTTPS push was attempted but stopped before changing the remote because Git could not obtain GitHub credentials in the execution environment. The `gh` CLI is not installed, so no login was initiated and no Actions run could be queried. Remote CI status is **PENDING (branch not pushed)**. Hardware validation remains **NOT RUN**, and no merge, pull request, tag, or GitHub release was created.
+The user subsequently pushed `modernization/release-candidate` manually. Read-only remote inspection confirmed that both the local tracking reference and the public remote branch point to `d7a3b6c67b551dbaeea52e8a3548d744aac16baf`.
+
+The public GitHub Actions API verifies [CI run 35598136126](https://github.com/bsvdoom/ArduinoBIOSProgrammer/actions/runs/35598136126) as `completed/success` for `d7a3b6c`. All four jobs completed successfully:
+
+- Firmware characterization (Ubuntu)
+- Python 3.14.7 (`ubuntu-latest`)
+- Python 3.14.7 (`windows-latest`)
+- PlatformIO Arduino Uno
+
+CI status source: **GitHub-verified**, consistent with the user's report that every job was green. The branch-filtered overview is available on the [GitHub Actions page](https://github.com/bsvdoom/ArduinoBIOSProgrammer/actions?query=branch%3Amodernization%2Frelease-candidate).
+
+Hardware validation remains **NOT RUN**. No Arduino upload, real flash read/erase/write/verify, merge, pull request, tag, or GitHub release was performed. A real Arduino Uno plus isolated flash-hardware validation is still required before a stable release.
